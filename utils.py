@@ -114,3 +114,15 @@ def compute_psnr_ssim(recoverd, clean):
     return psnr / recoverd.shape[0], ssim / recoverd.shape[0], recoverd.shape[0]
 
 
+def compute_psnr_ssim_1(recovered, clean):
+    assert recovered.shape == clean.shape
+    recovered = np.clip(recovered.detach().cpu().numpy(), 0, 1)
+    clean =  np.clip(clean.detach().cpu().numpy(),0,1)
+    recovered = recovered.transpose(0, 2, 3, 1)
+    clean = clean.transpose(0, 2, 3, 1)
+    ssim = np.zeros([recovered.shape[0], 1])
+    for i in range(recovered.shape[0]):
+        ssim += structural_similarity(clean[i], recovered[i], data_range=1, channel_axis=-1, multichannel=True)
+    return ssim, recovered.shape[0]
+
+
