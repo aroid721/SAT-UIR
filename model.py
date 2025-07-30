@@ -2,7 +2,6 @@
 from utils import *
 from attention import NonLocalSparseAttention
 from deform_conv import DCN_layer
-#from randomized_quantization import RandomizedQuantizationAugModule
 
 class SFT_layer(nn.Module):
     def __init__(self, channels_in, channels_out):
@@ -250,7 +249,7 @@ class AtrousBlock(nn.Module):
 
         x_total = self.act(self.conv(torch.cat((x1, x2, x3, x4), 1)))
         output = self.att(data, x_total)
-        return output #torch.Size([1, 32, 2160, 3840])
+        return output 
 
 
 class AIMnet(nn.Module):
@@ -319,12 +318,11 @@ class AIMnet(nn.Module):
 
     def forward(self, x, la):
         x_top = x.clone()  
-        x_top_la = self.conv_in(la)
+        x_top_la = self.conv_in(la) 
         x_grad = self.get_gradient(x) 
         x_top = self.conv_in(x_top)
         x_mid = self.down2(x_top) 
         x_bot = self.down4(x_top) 
-
         
         x_top1 = self.dau_top(self.igb_layer(self.atb_top(x_top), x_top_la))
         x_mid1 = self.dau_mid(self.atb_mid(x_mid))

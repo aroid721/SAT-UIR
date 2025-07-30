@@ -16,7 +16,9 @@ from torchvision.models import vgg16
 from loss.losses import *
 from model import GetGradientNopadding
 from loss.contrast import ContrastLoss
+import pyiqa
 from PIL import Image
+import time
 
 
 
@@ -52,6 +54,7 @@ class Trainer:
         self.device, available_gpus = self._get_available_devices(self.args.gpus)
         self.model = torch.nn.DataParallel(self.model, device_ids=available_gpus)
         self.score_his = {}
+        # set optimizer and learning rate
         self.optimizer_s = AdamP(self.model.parameters(), lr=3e-4, betas=(0.9, 0.999), weight_decay=1e-4)
         self.lr_scheduler_s = lr_scheduler.MultiStepLR(self.optimizer_s, milestones=[200], gamma=0.5)
 
@@ -80,7 +83,8 @@ class Trainer:
         for idx in range(0, N):
             score_his = self.score_his[p_name[idx]] if p_name[idx] in self.score_his else 0.0
             if ssim_score_ul[idx] > score_his:
-                positive_sample[idx] = student_predict[idx]
+                positive_sample[idx] = student_predict[idx] 
+                # update the reliable bank
                 temp_c = np.transpose(student_predict[idx].detach().cpu().numpy(), (1, 2, 0))
                 temp_c = np.clip(temp_c, 0, 1)
                 arr_c = (temp_c*255).astype(np.uint8)
@@ -140,32 +144,39 @@ class Trainer:
             unpaired_data_s = Variable(unpaired_data_s).cuda(non_blocking=True)
             unpaired_data_w = Variable(unpaired_data_w).cuda(non_blocking=True)
             unpaired_la = Variable(unpaired_la).cuda(non_blocking=True)
-        
+
             p_list = Variable(p_list).cuda(non_blocking=True)
             # teacher output
             predict_target_u, ssim_score_ul = self.predict_with_out_grad(unpaired_data_w, unpaired_la)
             origin_predict = predict_target_u.detach().clone()
             # student output
             outputs_l, outputs_g, ssim_score_l,fea_l = self.model(img_data, img_la)
+           
             ssim_l, _ = compute_psnr_ssim_1(outputs_l.detach(), label.detach())
+           
             ssim_l = torch.FloatTensor(ssim_l).cuda()
             pseudo_loss =  self.bceloss(ssim_score_l, ssim_l)
 
             structure_loss =  self.loss_str(outputs_l, label)
             perpetual_loss =  self.loss_per(outputs_l, label)
+           
             get_grad = GetGradientNopadding().cuda()
             gradient_loss = self.loss_grad(get_grad(outputs_l), get_grad(label)) + self.loss_grad(outputs_g, get_grad(label))
-            loss_sup = structure_loss + 0.5 * perpetual_loss + 0.1 * gradient_loss + 0.01 * pseudo_loss #+ 0.01*match_loss
+            loss_sup = structure_loss + 0.5 * perpetual_loss + 0.1 * gradient_loss + 0.01 * pseudo_loss 
             sup_loss.update(loss_sup.mean().item())
             p_sample, n_sample, scores = self.get_reliable(predict_target_u, predict_target_u, p_list, p_name, ssim_score_ul, epoch)
 
+        
             outputs_ul, _, ssim_score_ul_s,fea_ul_s = self.model(unpaired_data_s, unpaired_la)
-          
+           
+
+
             loss_unsu = self.loss_cr(outputs_ul, p_sample, unpaired_data_w)
             loss_unsu2 =  self.loss_unsup(outputs_ul, p_sample)
 
             loss_unsu3 =  torch.mean(torch.max(ssim_score_ul_s - ssim_score_ul,torch.tensor(0.0)))
 
+            
             unsup_loss.update((loss_unsu + loss_unsu2 + 0.01*loss_unsu3).mean().item())
             consistency_weight = self.get_current_consistency_weight(epoch)
             total_loss = loss_sup + consistency_weight*(loss_unsu + loss_unsu2 + 0.01*loss_unsu3)
@@ -178,7 +189,7 @@ class Trainer:
             tbar.set_description('Train-Student Epoch {} | Ls {:.4f} Lu {:.4f}|'
                                  .format(epoch, sup_loss.avg, unsup_loss.avg))
 
-            del img_data, label, unpaired_data_w, n_sample, unpaired_data_s, img_la, unpaired_la#, mix_img_data
+            del img_data, label, unpaired_data_w, n_sample, unpaired_data_s, img_la, unpaired_la
 
             with torch.no_grad():
                 self.update_teachers(teacher=self.tmodel, itera=self.curiter, epochs = epoch)
@@ -189,10 +200,12 @@ class Trainer:
         return loss_total_ave, psnr_train
 
     def _valid_epoch(self, epoch):
+        psnr_val = []
         self.model.eval()
         self.tmodel.eval()
         val_psnr = AverageMeter()
         val_ssim = AverageMeter()
+        total_loss_val = AverageMeter()
         tbar = tqdm(self.val_loader, ncols=130)
         with torch.no_grad():
             for i, (val_data, val_label, val_la) in enumerate(tbar):
@@ -204,13 +217,14 @@ class Trainer:
                 temp_psnr, temp_ssim, N = compute_psnr_ssim(val_output, val_label)
                 val_psnr.update(temp_psnr, N)
                 val_ssim.update(temp_ssim, N)
+                psnr_val.extend(to_psnr(val_output, val_label))
                 tbar.set_description('{} Epoch {} | PSNR: {:.4f}, SSIM: {:.4f}|'.format(
                     "Eval-Student", epoch, val_psnr.avg, val_ssim.avg))
 
             self.writer.write('{} Epoch {} | PSNR: {:.4f}, SSIM: {:.4f} + \n'.format("Eval-Student", epoch, val_psnr.avg, val_ssim.avg))
             self.writer.flush()
             del val_output, val_label, val_data
-            return val_psnr
+            return psnr_val
 
     def _get_available_devices(self, n_gpu):
         sys_gpu = torch.cuda.device_count()

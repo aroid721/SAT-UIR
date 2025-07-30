@@ -6,7 +6,6 @@ import random
 from random import randrange
 from torchvision.transforms import ToTensor, ToPILImage
 import torchvision.transforms as transforms
-#from randomized_quantization import RandomizedQuantizationAugModule
 IMG_EXTENSIONS = [
     '.jpg', '.JPG', '.jpeg', '.JPEG',
     '.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP',
@@ -102,6 +101,7 @@ class TrainLabeled(data.Dataset):
     def __len__(self):
         return len(self.A_paths)
 
+
 class TrainUnlabeled(data.Dataset):
     def __init__(self, dataroot, phase, finesize):
         super().__init__()
@@ -165,7 +165,7 @@ class ValLabeled(data.Dataset):
         A = Image.open(self.A_paths[index]).convert("RGB")
         B = Image.open(self.B_paths[index]).convert("RGB")
         C = Image.open(self.C_paths[index]).convert("RGB")
-        resized_a = A.resize((self.fineSize, self.fineSize), resample=Image.LANCZOS)
+        resized_a = A.resize((self.fineSize, self.fineSize), resample=Image.LANCZOS) #Image.ANTIALIAS
         resized_b = B.resize((self.fineSize, self.fineSize), resample=Image.LANCZOS)
         resized_c = C.resize((self.fineSize, self.fineSize), resample=Image.LANCZOS)
         # transform to (0, 1)
@@ -177,7 +177,7 @@ class ValLabeled(data.Dataset):
 
     def __len__(self):
         return len(self.A_paths)
-    
+
 
 class TestData(data.Dataset):
     def __init__(self, dataroot):
@@ -213,12 +213,14 @@ def data_aug(images):
     kernel_size = kernel_size + 1 if kernel_size % 2 == 0 else kernel_size
     blurring_image = transforms.GaussianBlur(kernel_size, sigma=(0.1, 2.0))
     color_jitter = transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.25)
+
     strong_aug = images
     if random.random() < 0.8:
         strong_aug = color_jitter(strong_aug)
     strong_aug = transforms.RandomGrayscale(p=0.2)(strong_aug)
     if random.random() < 0.5:
         strong_aug = blurring_image(strong_aug)
+   
     return strong_aug
 
 

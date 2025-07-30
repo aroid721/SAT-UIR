@@ -10,8 +10,6 @@ import numpy as np
 from PIL import Image
 from adamp import AdamP
 from model import AIMnet
-# from model_up2 import AIMnet
-# from model_up2_delete4 import AIMnet
 from dataset_all import TestData, ValLabeled_unresize
 import skimage.metrics
 import tqdm

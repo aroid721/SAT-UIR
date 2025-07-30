@@ -17,8 +17,8 @@ def main(gpu, args):
     setup_seed(2022)
     # load data
     train_folder = args.data_dir
-    paired_dataset = TrainLabeled(dataroot=train_folder, phase='labeled', finesize=args.crop_size)
-    unpaired_dataset = TrainUnlabeled(dataroot=train_folder, phase='unlabeled', finesize=args.crop_size)
+    paired_dataset = TrainLabeled(dataroot=train_folder, phase='labeled1', finesize=args.crop_size)
+    unpaired_dataset = TrainUnlabeled(dataroot=train_folder, phase='unlabeled1', finesize=args.crop_size)
     val_dataset = ValLabeled(dataroot=train_folder, phase='testR', finesize=args.crop_size)
     paired_sampler = None
     unpaired_sampler = None
@@ -54,9 +54,9 @@ if __name__ == '__main__':
     parser.add_argument('--resume_path', default='', type=str, help='if resume')
     parser.add_argument('--use_pretain', default='False', type=str, help='use pretained model')
     parser.add_argument('--pretrained_path', default='/path/to/pretained/net.pth', type=str, help='if pretrained')
-    parser.add_argument('--data_dir', default='./data', type=str, help='data root path')
+    parser.add_argument('--data_dir', default='/media/tqy/8EE61E80E61E692B/code/Semi-UIR/UIR_728/data', type=str, help='data root path')
     parser.add_argument('--save_path', default='./model/ckpt/', type=str)
-    parser.add_argument('--log_dir', default='./model/log/', type=str)
+    parser.add_argument('--log_dir', default='./model/log', type=str)
 
     args = parser.parse_args()
     if not os.path.isdir(args.save_path):

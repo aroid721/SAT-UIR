@@ -8,22 +8,6 @@ import torch.nn.functional as F
 from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 import lpips
 
-
-def compute_lpips(recoverd, clean):
-    assert recoverd.shape == clean.shape
-    recoverd = np.clip(recoverd.detach().cpu().numpy(), 0, 1)
-    clean = np.clip(clean.detach().cpu().numpy(), 0, 1)
-    recoverd = recoverd.transpose(0, 2, 3, 1)  
-    clean = clean.transpose(0, 2, 3, 1)
-    
-    lpips_model = lpips.LPIPS(net='vgg').to('cpu')
-    lpips_score = 0
-    for i in range(recoverd.shape[0]):
-        recoverd_tensor = torch.tensor(recoverd[i].transpose(2, 0, 1)).unsqueeze(0)
-        clean_tensor = torch.tensor(clean[i].transpose(2, 0, 1)).unsqueeze(0)
-        lpips_score += lpips_model(recoverd_tensor, clean_tensor).item()
-    return lpips_score / recoverd.shape[0], recoverd.shape[0]
-
 def setup_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -114,15 +98,18 @@ def compute_psnr_ssim(recoverd, clean):
     return psnr / recoverd.shape[0], ssim / recoverd.shape[0], recoverd.shape[0]
 
 
-def compute_psnr_ssim_1(recovered, clean):
-    assert recovered.shape == clean.shape
-    recovered = np.clip(recovered.detach().cpu().numpy(), 0, 1)
-    clean =  np.clip(clean.detach().cpu().numpy(),0,1)
-    recovered = recovered.transpose(0, 2, 3, 1)
+
+
+def compute_psnr_ssim_1(recoverd, clean):
+    assert recoverd.shape == clean.shape
+    recoverd = np.clip(recoverd.detach().cpu().numpy(), 0, 1)
+    clean = np.clip(clean.detach().cpu().numpy(), 0, 1)
+    recoverd = recoverd.transpose(0, 2, 3, 1)  
     clean = clean.transpose(0, 2, 3, 1)
-    ssim = np.zeros([recovered.shape[0], 1])
-    for i in range(recovered.shape[0]):
-        ssim += structural_similarity(clean[i], recovered[i], data_range=1, channel_axis=-1, multichannel=True)
-    return ssim, recovered.shape[0]
+    psnr = 0
+    ssim = np.zeros([recoverd.shape[0],1])
 
-
+    for i in range(recoverd.shape[0]):
+        #psnr += peak_signal_noise_ratio(clean[i], recoverd[i], data_range=1)
+        ssim[i] = structural_similarity(clean[i], recoverd[i], data_range=1, channel_axis=-1, multichannel=True)
+    return ssim, recoverd.shape[0]
