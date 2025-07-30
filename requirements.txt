@@ -1,7 +1,7 @@
 # CUDA 12.1
 python==3.8.18
 torch==2.1.0
-torchvision==0.16.0+cu121
+torchvision==0.16.0
 pyiqa 0.1.10 
 mmcv==2.1.0 
 tqdm
