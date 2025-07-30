@@ -7,7 +7,7 @@ This repository provides the official code for **SAT-UIR**, a self-assessment tr
 
 - Ubuntu==22.04.5 LTS
 - Pytorch==2.1.0  
-- CUDA==12.4
+- CUDA==12.1
 
 Other dependencies are listed in `requirements.txt`
 
