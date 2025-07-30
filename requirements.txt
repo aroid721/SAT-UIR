@@ -6,7 +6,7 @@ pyiqa 0.1.10
 mmcv==2.1.0 
 tqdm
 seaborn
-scikit-image 0.21.0 
+scikit-image==0.21.0 
 adamp
 scipy
 pillow
